@@ -124,14 +124,22 @@ function App() {
             <p className="topbar__sub">Maintain service continuity, asset health, and distributed coverage.</p>
           </div>
           <div className="topbar__right">
-            <div className="status-chip">
-              <span className="status-chip__dot" />
-              Enterprise operations
-            </div>
+            {isDemoMode() ? (
+              <div className="status-chip status-chip--demo" style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#f59e0b' }}>
+                <span className="status-chip__dot" style={{ backgroundColor: '#f59e0b' }} />
+                Demo Mode (Local)
+              </div>
+            ) : (
+              <div className="status-chip status-chip--live" style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
+                <span className="status-chip__dot" style={{ backgroundColor: '#10b981' }} />
+                Live Mode (Render API)
+              </div>
+            )}
             <button className="btn btn--primary" onClick={() => setFormOpen(true)}>
               <PlusIcon /> New ticket
             </button>
           </div>
+
         </header>
 
         {isDemoMode() && (
