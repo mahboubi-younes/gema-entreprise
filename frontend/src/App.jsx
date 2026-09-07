@@ -1,217 +1,36 @@
-import { useEffect, useState } from 'react'
-import Login from './components/Login'
-import Sidebar from './components/Sidebar'
-import Dashboard from './components/Dashboard'
-import Tickets from './components/Tickets'
-import Assets from './components/Assets'
-import Users from './components/Users'
-import Modal from './components/Modal'
-import { navItems } from './components/Sidebar'
-import { PlusIcon } from './components/Icons'
-import { isDemoMode, mockFetchJson } from './mockApi'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-
-const fetchJson = async (path, options = {}) => {
-  if (isDemoMode()) {
-    return mockFetchJson(path, options)
-  }
-  const response = await fetch(`${API_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  })
-  if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || 'Request failed')
-  }
-  return response.json()
-}
-
-function App() {
-  const [token, setToken] = useState(() => localStorage.getItem('assetdesk-token'))
-  const [view, setView] = useState('dashboard')
-  const [summary, setSummary] = useState(null)
-  const [tickets, setTickets] = useState([])
-  const [assets, setAssets] = useState([])
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [formOpen, setFormOpen] = useState(false)
-  const [newTicket, setNewTicket] = useState({ title: '', priority: 'medium', description: '' })
-
-  useEffect(() => {
-    if (!token) return
-    const load = async () => {
-      try {
-        setLoading(true)
-        setError('')
-        const headers = { Authorization: `Bearer ${token}` }
-        const [summaryData, ticketData, assetData, userData] = await Promise.all([
-          fetchJson('/api/summary', { headers }),
-          fetchJson('/api/tickets', { headers }),
-          fetchJson('/api/assets', { headers }),
-          fetchJson('/api/users', { headers }),
-        ])
-        setSummary(summaryData)
-        setTickets(ticketData)
-        setAssets(assetData)
-        setUsers(userData)
-      } catch (err) {
-        setError(err.message || 'Unable to load data')
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [token])
-
-  const handleLogin = async (email, password) => {
-    try {
-      setLoading(true)
-      setError('')
-      const data = await fetchJson('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      })
-      localStorage.setItem('assetdesk-token', data.token)
-      setToken(data.token)
-    } catch (err) {
-      setError('Invalid credentials. Try the demo access.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('assetdesk-token')
-    setToken(null)
-  }
-
-  const handleTicketSubmit = async (event) => {
-    event.preventDefault()
-    try {
-      setLoading(true)
-      const data = await fetchJson('/api/tickets', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify(newTicket),
-      })
-      setTickets((prev) => [data, ...prev])
-      setNewTicket({ title: '', priority: 'medium', description: '' })
-      setFormOpen(false)
-    } catch (err) {
-      setError('Unable to create ticket right now.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (!token) {
-    return <Login onLogin={handleLogin} busy={loading} error={error} />
-  }
-
-  const currentLabel = navItems.find((item) => item.id === view)?.label || 'Overview'
-
-  return (
-    <div className="shell">
-      <Sidebar view={view} onNavigate={setView} onLogout={handleLogout} />
-
-      <main className="main">
-        <header className="topbar">
-          <div className="topbar__left">
-            <p className="eyebrow">Workspace / Enterprise Operations</p>
-            <h1>{currentLabel}</h1>
-            <p className="topbar__sub">Maintain service continuity, asset health, and distributed coverage.</p>
-          </div>
-          <div className="topbar__right">
-            {isDemoMode() ? (
-              <div className="status-chip status-chip--demo" style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#f59e0b' }}>
-                <span className="status-chip__dot" style={{ backgroundColor: '#f59e0b' }} />
-                Demo Mode (Local)
-              </div>
-            ) : (
-              <div className="status-chip status-chip--live" style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
-                <span className="status-chip__dot" style={{ backgroundColor: '#10b981' }} />
-                Live Mode (Render API)
-              </div>
-            )}
-            <button className="btn btn--primary" onClick={() => setFormOpen(true)}>
-              <PlusIcon /> New ticket
-            </button>
-          </div>
-
-        </header>
-
-        {isDemoMode() && (
-          <div className="banner banner--info" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', color: '#3b82f6', borderRadius: '6px', marginBottom: '16px' }}>
-            <span style={{ fontSize: '14px' }}>
-              🌐 <strong>Demo Mode:</strong> Running entirely client-side using LocalStorage database. Any additions/modifications will persist locally in your browser.
-            </span>
-            <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: '12px', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#3b82f6' }} onClick={() => { localStorage.clear(); window.location.reload(); }}>
-              Reset Data
-            </button>
-          </div>
-        )}
-
-        {error && <div className="banner banner--error">{error}</div>}
-
-        {view === 'dashboard' && (
-          <Dashboard
-            summary={summary}
-            tickets={tickets}
-            assets={assets}
-            loading={loading}
-            onViewAll={setView}
-            onNewTicket={() => setFormOpen(true)}
-          />
-        )}
-        {view === 'tickets' && (
-          <Tickets tickets={tickets} loading={loading} onNewTicket={() => setFormOpen(true)} />
-        )}
-        {view === 'assets' && (
-          <Assets assets={assets} loading={loading} />
-        )}
-        {view === 'users' && (
-          <Users users={users} loading={loading} />
-        )}
-      </main>
-
-      <Modal open={formOpen} onClose={() => setFormOpen(false)} title="Create ticket">
-        <form onSubmit={handleTicketSubmit} className="modal-form">
-          <label>
-            <span>Title</span>
-            <input
-              value={newTicket.title}
-              onChange={(e) => setNewTicket({ ...newTicket, title: e.target.value })}
-              placeholder="Brief summary of the issue"
-              required
-            />
-          </label>
-          <label>
-            <span>Priority</span>
-            <select
-              value={newTicket.priority}
-              onChange={(e) => setNewTicket({ ...newTicket, priority: e.target.value })}
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </label>
-          <label>
-            <span>Description</span>
-            <textarea
-              rows="4"
-              value={newTicket.description}
-              onChange={(e) => setNewTicket({ ...newTicket, description: e.target.value })}
-              placeholder="Detailed description of the request…"
-            />
-          </label>
-          <button className="btn btn--primary btn--full" type="submit">Create ticket</button>
-        </form>
-      </Modal>
-    </div>
-  )
-}
-
+import {useEffect,useMemo,useState} from 'react'
+import {add,addDocument,assignEquipment,audit,bootstrap,csvDownload,dateFr,money,readAll,reset,returnEquipment,update,write} from './dataService'
+const nav=[['dashboard','Tableau de bord','▦'],['equipment','Parc matériel','▣'],['employees','Collaborateurs','♙'],['assignments','Affectations','⇄'],['returns','Restitutions','↩'],['maintenance','Maintenance','⌁'],['documents','Documents','▤'],['reports','Rapports','◫'],['suppliers','Fournisseurs','◉'],['sites','Sites','⌖'],['categories','Référentiels','☷'],['users','Utilisateurs','♧'],['audit','Journal d’activité','◷'],['settings','Paramètres','⚙']]
+const perms={'Administrateur':nav.map(x=>x[0]),'Gestionnaire du parc':['dashboard','equipment','assignments','returns','maintenance','documents','reports','suppliers','sites','categories','audit'],'Responsable RH':['dashboard','employees','returns','documents','audit'],'Responsable de site':['dashboard','equipment','assignments','returns','reports','sites'],'Collaborateur':['dashboard','equipment','documents','maintenance']}
+const n=x=>x?`${x.firstName} ${x.lastName}`:'—', ini=x=>n(x).split(' ').map(y=>y[0]).join('').slice(0,2), eq=(d,id)=>d.equipment.find(x=>x.id===id)?.designation||'Matériel supprimé', emp=(d,id)=>n(d.employees.find(x=>x.id===id)), st=x=>x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replaceAll(' ','-'),today=()=>new Date().toISOString().slice(0,10)
+function Btn({children,onClick,kind='',type='button'}){return <button type={type} className={`btn ${kind}`} onClick={onClick}>{children}</button>};function Badge({children}){return <span className={`badge ${st(children)}`}>{children}</span>};function Field({label,children}){return <label className="field"><span>{label}</span>{children}</label>};function Table({heads,rows}){return <div className="table-wrap"><table><thead><tr>{heads.map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{rows.length?rows.map((r,i)=><tr key={i}>{r.map((x,j)=><td key={j}>{x}</td>)}</tr>):<tr><td colSpan={heads.length}>Aucune donnée.</td></tr>}</tbody></table></div>};function Modal({title,children,close,wide}){return <div className="overlay" onMouseDown={e=>e.target===e.currentTarget&&close()}><section className={`modal ${wide?'wide':''}`} role="dialog" aria-modal="true"><header><h2>{title}</h2><button onClick={close}>×</button></header>{children}</section></div>};function Info({rows}){return <dl className="info">{rows.map(x=><div key={x[0]}><dt>{x[0]}</dt><dd>{x[1]}</dd></div>)}</dl>}
+function Login({db,login}){const[email,setEmail]=useState('admin@gema.dz'),[password,setPass]=useState('demo123'),[err,setErr]=useState('');function submit(e){e.preventDefault();let u=db.users.find(x=>x.email===email&&x.password===password&&x.status==='Actif');if(!u)return setErr('Identifiants invalides.');login(u)}return <main className="login"><section className="login-hero"><Brand light/><div><p className="eyebrow">Démonstrateur frontend autonome</p><h1>Gérez. Affectez.<br/>Restituez.</h1><p>Gestion professionnelle du matériel d’entreprise pour les PME algériennes.</p><div className="login-stats"><b>40<span>matériels</span></b><b>20<span>collaborateurs</span></b><b>100%<span>local</span></b></div></div><small>Données fictives · Aucun backend requis</small></section><section className="login-form"><form onSubmit={submit}><Brand/><h2>Bienvenue</h2><p>Connectez-vous à l’espace GEMA.</p>{err&&<p className="error">{err}</p>}<Field label="Adresse e-mail"><input type="email" value={email} onChange={e=>setEmail(e.target.value)}/></Field><Field label="Mot de passe"><input type="password" value={password} onChange={e=>setPass(e.target.value)}/></Field><Btn kind="primary" type="submit">Se connecter</Btn><div className="demo"><b>Comptes démo</b><span>admin@gema.dz · parc@gema.dz · rh@gema.dz</span><span>Mot de passe : <b>demo123</b></span></div></form></section></main>};function Brand({light}){return <div className={`brand ${light?'light':''}`}><b>G</b><div><strong>GEMA Entreprise</strong><small>Gestion du Matériel d’Entreprise</small></div></div>}
+function App(){const[db,setDb]=useState(()=>bootstrap()),[session,setSession]=useState(()=>JSON.parse(localStorage.getItem('gema_session')||(new URLSearchParams(location.search).get('demo')==='1'?'{"id":"user-1"}':'null'))),[view,setView]=useState(()=>location.hash.slice(1)||'dashboard'),[modal,setModal]=useState(null),[search,setSearch]=useState(''),[toast,setToast]=useState('');const user=useMemo(()=>db.users.find(x=>x.id===session?.id),[db,session]);useEffect(()=>{const h=()=>setView(location.hash.slice(1)||'dashboard');addEventListener('hashchange',h);return()=>removeEventListener('hashchange',h)},[]);const refresh=()=>setDb(readAll()),note=x=>{setToast(x);setTimeout(()=>setToast(''),2800)},commit=(f,msg)=>{try{f();refresh();setModal(null);note(msg)}catch(e){note(e.message)}};const login=u=>{localStorage.setItem('gema_session',JSON.stringify({id:u.id}));setSession({id:u.id})};if(!user)return <Login db={db} login={login}/>;let allowed=perms[user.role]||[];let go=x=>location.hash=x;let ctx={db,user,refresh,note,commit,setModal,go};return <div className="shell"><aside><Brand light/><nav>{nav.filter(x=>allowed.includes(x[0])).map(x=><button className={view===x[0]?'on':''} key={x[0]} onClick={()=>go(x[0])}><i>{x[2]}</i>{x[1]}</button>)}</nav><div className="side-user"><span className="avatar">{ini(user)}</span><p><b>{n(user)}</b><small>{user.role}</small></p><button onClick={()=>{localStorage.removeItem('gema_session');setSession(null)}}>↪</button></div></aside><main><header className="top"><div><p>GEMA Entreprise / {nav.find(x=>x[0]===view)?.[1]}</p><h1>{nav.find(x=>x[0]===view)?.[1]}</h1></div><div><label className="search">⌕<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Recherche globale…"/></label><button className="bell" onClick={()=>setModal({t:'notifications'})}>♢<em>{db.notifications.filter(x=>!x.read).length}</em></button><span className="avatar">{ini(user)}</span></div></header><div className="banner"><b>Mode démo local</b> Toutes les données sont conservées dans ce navigateur. Le contrôle des rôles est une démonstration frontend.</div>{page(view,ctx,search)}</main>{modal&&modalView(modal,ctx,()=>setModal(null))}{toast&&<div className="toast">✓ {toast}</div>}</div>}
+function page(v,c,q){return ({dashboard:<Dashboard {...c}/>,equipment:<Equipment {...c} q={q}/>,employees:<Employees {...c} q={q}/>,assignments:<Assignments {...c}/>,returns:<Returns {...c}/>,maintenance:<Maintenance {...c}/>,documents:<Documents {...c}/>,reports:<Reports {...c}/>,suppliers:<Suppliers {...c} q={q}/>,sites:<Sites {...c}/>,categories:<Categories {...c}/>,users:<Users {...c}/>,audit:<Audit {...c}/>,settings:<Settings {...c}/>})[v]||<Dashboard {...c}/>}
+function Head({children,action}){return <div className="head"><p>{children}</p>{action}</div>};function Panel({title,children}){return <section className="panel"><header><h2>{title}</h2></header>{children}</section>}
+function Dashboard({db,setModal,go}){let e=db.equipment.filter(x=>!x.archived),active=e.filter(x=>x.status==='Affecté'),out=db.employees.filter(x=>x.status==='Sortant');return <><Head action={<div><Btn onClick={()=>setModal({t:'assignment'})}>Affecter</Btn><Btn kind="primary" onClick={()=>setModal({t:'equipment'})}>＋ Ajouter un matériel</Btn></div>}>Vue opérationnelle du parc matériel</Head><section className="kpis">{[['Total matériel',e.length,money(e.reduce((a,x)=>a+x.price,0)),'▣'],['Matériel affecté',active.length,`${Math.round(active.length/e.length*100)}% du parc`,'⇄'],['Disponible',e.filter(x=>x.status==='Disponible').length,'Prêt à affecter','✓'],['En maintenance',e.filter(x=>x.status==='En maintenance').length,'Interventions en cours','⌁'],['À restituer',e.filter(x=>x.status==='En attente de restitution').length,`${out.length} sortant(s)`,'↩'],['Hors service',e.filter(x=>x.status==='Hors service').length,'À contrôler','!']].map(x=><article className="kpi" key={x[0]}><i>{x[3]}</i><span>{x[0]}</span><b>{x[1]}</b><small>{x[2]}</small></article>)}</section><section className="grid"><Panel title="Dernières affectations"><Table heads={['Matériel','Collaborateur','Date','Statut']} rows={db.assignments.filter(x=>x.status==='Affectée').slice(0,5).map(x=>[eq(db,x.equipmentId),emp(db,x.employeeId),dateFr(x.date),<Badge key={x.id}>{x.status}</Badge>])}/></Panel><Panel title="Collaborateurs sortants"><div className="list">{out.map(x=>{let count=db.assignments.filter(a=>a.employeeId===x.id&&a.status==='Affectée').length;return <div key={x.id}><span className="avatar">{ini(x)}</span><p><b>{n(x)}</b><small>{count} équipement(s) à restituer</small></p><Btn onClick={()=>setModal({t:'employee',d:x})}>Traiter</Btn></div>})}</div></Panel><Panel title="Activité récente"><div className="activity">{db.audit.slice(0,6).map(x=><div key={x.id}><i>●</i><p><b>{x.action}</b><small>{x.description}</small></p><time>{dateFr(x.date)}</time></div>)}</div></Panel><Panel title="Maintenance à suivre"><Table heads={['Matériel','Type','Statut']} rows={db.maintenance.filter(x=>x.status!=='Terminée').slice(0,5).map(x=>[eq(db,x.equipmentId),x.type,<Badge key={x.id}>{x.status}</Badge>])}/></Panel></section></>}function Equipment({db,setModal,q}){let[f,setF]=useState('');let rows=db.equipment.filter(x=>!x.archived&&(`${x.designation} ${x.reference} ${x.serial} ${x.inventory} ${x.supplier}`).toLowerCase().includes(q.toLowerCase())&&(!f||x.status===f));return <><Head action={<div><Btn onClick={()=>csvDownload('gema-materiels.csv',[['Référence','Désignation','Statut','Valeur'],...rows.map(x=>[x.reference,x.designation,x.status,x.price])])}>Exporter CSV</Btn><Btn kind="primary" onClick={()=>setModal({t:'equipment'})}>＋ Ajouter un matériel</Btn></div>}>{rows.length} matériel(s) enregistré(s)</Head><div className="toolbar"><select value={f} onChange={e=>setF(e.target.value)}><option value="">Tous les statuts</option>{['Disponible','Affecté','En maintenance','En attente de restitution','Hors service','Réformé'].map(x=><option key={x}>{x}</option>)}</select>{q&&<span>Recherche : « {q} »</span>}</div><Table heads={['Référence / matériel','Catégorie','Site','Statut','État','Valeur','']} rows={rows.map(x=>[<div className="main-cell" key={x.id}><b>{x.designation}</b><small>{x.reference} · {x.serial}</small></div>,x.category,x.site,<Badge key="a">{x.status}</Badge>,x.condition,money(x.price),<button className="link" key="b" onClick={()=>setModal({t:'equipment-detail',d:x})}>Voir</button>])}/></>}
+function Employees({db,setModal,q}){let[f,setF]=useState('');let rows=db.employees.filter(x=>`${n(x)} ${x.matricule} ${x.email} ${x.department}`.toLowerCase().includes(q.toLowerCase())&&(!f||x.status===f));return <><Head action={<Btn kind="primary" onClick={()=>setModal({t:'employee-form'})}>＋ Ajouter un collaborateur</Btn>}>{rows.length} collaborateur(s)</Head><div className="toolbar"><select value={f} onChange={e=>setF(e.target.value)}><option value="">Tous les statuts</option>{['Actif','En congé','En période d’essai','Sortant','Sorti','Suspendu'].map(x=><option key={x}>{x}</option>)}</select></div><Table heads={['Collaborateur','Poste','Département','Site','Statut','Matériel','']} rows={rows.map(x=>[<div className="person" key={x.id}><span className="avatar">{ini(x)}</span><p><b>{n(x)}</b><small>{x.matricule} · {x.email}</small></p></div>,x.job,x.department,x.site,<Badge key="a">{x.status}</Badge>,db.assignments.filter(a=>a.employeeId===x.id&&a.status==='Affectée').length,<button className="link" key="b" onClick={()=>setModal({t:'employee',d:x})}>Profil</button>])}/></>}
+function Assignments({db,setModal}){return <><Head action={<Btn kind="primary" onClick={()=>setModal({t:'assignment'})}>＋ Nouvelle affectation</Btn>}>Traçabilité des remises de matériel aux collaborateurs.</Head><Table heads={['Référence','Matériel','Collaborateur','Date','Responsable','Statut','']} rows={db.assignments.map(x=>[x.reference,eq(db,x.equipmentId),emp(db,x.employeeId),dateFr(x.date),x.manager,<Badge key="a">{x.status}</Badge>,<button className="link" key="b" onClick={()=>setModal({t:'assignment-detail',d:x})}>Voir</button>])}/></>}
+function Returns({db,setModal}){let out=db.employees.filter(x=>x.status==='Sortant');return <><Head>Vérifier, restituer et clôturer les départs des collaborateurs.</Head>{out.length>0&&<section className="departures"><h2>Collaborateurs sortants — matériel à restituer</h2>{out.map(x=>{let a=db.assignments.filter(y=>y.employeeId===x.id&&y.status==='Affectée');return <article key={x.id}><div><span className="avatar">{ini(x)}</span><p><b>{n(x)}</b><small>{x.job} · {x.site}</small></p></div><b>{a.length} équipement(s)</b><span>{money(a.reduce((s,y)=>s+(db.equipment.find(z=>z.id===y.equipmentId)?.price||0),0))}</span><Btn kind="primary" onClick={()=>setModal({t:'employee',d:x})}>Traiter le départ</Btn></article>})}</section>}<Panel title="Historique des restitutions"><Table heads={['Référence','Matériel','Collaborateur','Date','État au retour','Validée par']} rows={db.returns.map(x=>[x.reference,eq(db,x.equipmentId),emp(db,x.employeeId),dateFr(x.date),<Badge key="a">{x.condition}</Badge>,x.validatedBy])}/></Panel></>}
+function Maintenance({db,setModal}){return <><Head action={<Btn kind="primary" onClick={()=>setModal({t:'maintenance'})}>＋ Ajouter une intervention</Btn>}>Planification et suivi des interventions sur le parc.</Head><Table heads={['Référence','Matériel','Type','Prestataire','Coût','Statut','']} rows={db.maintenance.map(x=>[x.reference,eq(db,x.equipmentId),x.type,x.provider,money(x.cost),<Badge key="a">{x.status}</Badge>,<button className="link" key="b" onClick={()=>setModal({t:'maintenance-detail',d:x})}>Voir</button>])}/></>}
+function Documents({db,setModal}){return <><Head action={<Btn kind="primary" onClick={()=>setModal({t:'manual-document'})}>＋ Générer un document</Btn>}>Archives administratives générées localement et prêtes à imprimer.</Head><Table heads={['Référence','Type','Date','Collaborateur','Matériel','Créé par','']} rows={db.documents.map(x=>[x.reference,x.type,dateFr(x.date),emp(db,x.employeeId),eq(db,x.equipmentId),x.createdBy,<span className="buttons" key="a"><button className="link" onClick={()=>setModal({t:'document',d:x})}>Voir</button><button className="link" onClick={()=>{setModal({t:'document',d:x});setTimeout(()=>print(),200)}}>Imprimer</button></span>])}/></>}
+function Reports({db}){let cats=[...new Set(db.equipment.map(x=>x.category))].map(x=>[x,db.equipment.filter(y=>y.category===x).length,money(db.equipment.filter(y=>y.category===x).reduce((s,y)=>s+y.price,0))]);return <><Head action={<Btn onClick={()=>print()}>Imprimer le rapport</Btn>}>Indicateurs et états récapitulatifs du parc matériel.</Head><section className="grid"><Panel title="Parc par catégorie"><Table heads={['Catégorie','Quantité','Valeur']} rows={cats}/></Panel><Panel title="Parc par site"><Table heads={['Site','Matériel','Valeur']} rows={db.sites.map(x=>{let e=db.equipment.filter(y=>y.site===x.name);return[x.name,e.length,money(e.reduce((s,y)=>s+y.price,0))]})}/></Panel><Panel title="Contrôles opérationnels"><div className="checks"><p><b>{db.equipment.filter(x=>x.warrantyEnd<'2027-01-01').length}</b> équipements en fin de garantie</p><p><b>{db.equipment.filter(x=>!x.serial).length}</b> équipements sans numéro de série</p><p><b>{db.equipment.filter(x=>x.status==='Disponible').length}</b> matériels disponibles</p><p><b>{money(db.maintenance.reduce((s,x)=>s+x.cost,0))}</b> de coût maintenance</p></div></Panel></section></>}
+function Suppliers({db,setModal,q}){let rows=db.suppliers.filter(x=>`${x.company} ${x.contact} ${x.wilaya}`.toLowerCase().includes(q.toLowerCase()));return <><Head action={<Btn kind="primary" onClick={()=>setModal({t:'supplier'})}>＋ Ajouter un fournisseur</Btn>}>Partenaires liés aux acquisitions et interventions.</Head><Table heads={['Raison sociale','Contact','Téléphone','Wilaya','Spécialité','']} rows={rows.map(x=>[x.company,x.contact,x.phone,x.wilaya,x.specialty,<button className="link" key={x.id} onClick={()=>setModal({t:'supplier',d:x})}>Modifier</button>])}/></>}
+function Sites({db,setModal}){return <><Head action={<Btn kind="primary" onClick={()=>setModal({t:'site'})}>＋ Ajouter un site</Btn>}>Sites et localisations de l’entreprise.</Head><section className="site-grid">{db.sites.map(x=><article key={x.id}><i>⌖</i><h2>{x.name}</h2><p>{x.address}</p><small>{x.wilaya} · Responsable : {x.manager}</small><footer><b>{db.equipment.filter(y=>y.site===x.name).length} matériels</b><button className="link" onClick={()=>setModal({t:'site',d:x})}>Modifier</button></footer></article>)}</section></>}
+function Categories({db,setModal}){return <><Head action={<Btn kind="primary" onClick={()=>setModal({t:'category'})}>＋ Ajouter une catégorie</Btn>}>Catégories, départements et autres données de référence.</Head><section className="grid refs"><Panel title="Catégories"><Table heads={['Libellé','Description','']} rows={db.categories.map(x=>[x.name,x.description,<button className="link" key={x.id} onClick={()=>setModal({t:'category',d:x})}>Modifier</button>])}/></Panel><Panel title="Départements"><div className="chips">{[...new Set(db.employees.map(x=>x.department))].map(x=><span key={x}>{x}</span>)}</div><h3>Types de maintenance</h3><div className="chips">{['Préventive','Corrective','Diagnostic','Réparation'].map(x=><span key={x}>{x}</span>)}</div><h3>Kit matériel</h3><p><b>{db.kits[0].name}</b><br/>{db.kits[0].items.join(' · ')}</p></Panel></section></>}
+function Users({db,setModal}){return <><Head action={<Btn kind="primary" onClick={()=>setModal({t:'user'})}>＋ Ajouter un utilisateur</Btn>}>Gestion locale des accès de démonstration.</Head><p className="info-banner">Les rôles contrôlent l’interface dans ce démonstrateur statique ; ils ne constituent pas une sécurité serveur.</p><Table heads={['Utilisateur','Fonction','Rôle','Site','Statut','Dernière connexion','']} rows={db.users.map(x=>[<div className="person" key={x.id}><span className="avatar">{ini(x)}</span><p><b>{n(x)}</b><small>{x.email}</small></p></div>,x.job,<Badge key="a">{x.role}</Badge>,x.site,<Badge key="b">{x.status}</Badge>,dateFr(x.lastLogin),<button className="link" key="c" onClick={()=>setModal({t:'user',d:x})}>Modifier</button>])}/></>}
+function Audit({db}){return <Panel title="Journal d’activité"><Table heads={['Date / heure','Utilisateur','Action','Entité','Description']} rows={db.audit.map(x=>[new Date(x.date).toLocaleString('fr-FR'),x.user,x.action,x.entity,x.description])}/></Panel>}
+function Settings({db,user,commit,setModal}){let[f,setF]=useState(db.company),[tab,setTab]=useState('Entreprise');return <><div className="tabs">{['Entreprise','Numérotation','Données démo'].map(x=><button key={x} className={tab===x?'on':''} onClick={()=>setTab(x)}>{x}</button>)}</div>{tab==='Entreprise'&&<form className="settings" onSubmit={e=>{e.preventDefault();commit(()=>{write('company',f);audit(n(user),'Profil entreprise modifié','Paramètres',f.legalName)},'Profil entreprise enregistré.')}}><Panel title="Profil de l’entreprise"><p>Informations reprises dans les documents administratifs.</p><div className="form-grid">{[['Raison sociale','legalName'],['Nom commercial','tradeName'],['Adresse','address'],['Wilaya','wilaya'],['Commune','commune'],['Téléphone','phone'],['E-mail','email'],['Site web','website'],['NIF','nif'],['RC','rc'],['NIS','nis'],['Responsable du parc','assetManager']].map(x=><Field label={x[0]} key={x[1]}><input value={f[x[1]]||''} onChange={e=>setF({...f,[x[1]]:e.target.value})}/></Field>)}</div></Panel><Btn kind="primary" type="submit">Enregistrer les paramètres</Btn></form>}{tab==='Numérotation'&&<Panel title="Compteurs locaux"><Table heads={['Type','Prochaine référence']} rows={Object.entries(db.counters).map(x=>[x[0],`GEMA-${x[0]}-${new Date().getFullYear()}-${String(x[1]).padStart(5,'0')}`])}/></Panel>}{tab==='Données démo'&&<section className="danger"><h2>Réinitialiser les données de démonstration</h2><p>Cette action supprime les changements enregistrés dans ce navigateur et restaure le jeu de données fictif.</p><Btn kind="danger" onClick={()=>setModal({t:'reset'})}>Réinitialiser les données</Btn></section>}</>}function modalView(m,c,close){let p={...c,close};if(m.t==='equipment')return <EquipmentForm {...p} item={m.d}/>;if(m.t==='equipment-detail')return <EquipmentDetail {...p} item={m.d}/>;if(m.t==='employee-form')return <EmployeeForm {...p} item={m.d}/>;if(m.t==='employee')return <EmployeeDetail {...p} item={m.d}/>;if(m.t==='assignment')return <AssignmentForm {...p}/>;if(m.t==='assignment-detail')return <AssignmentDetail {...p} item={m.d}/>;if(m.t==='return')return <ReturnForm {...p} assignment={m.d}/>;if(m.t==='maintenance')return <MaintenanceForm {...p}/>;if(m.t==='maintenance-detail')return <Detail {...p} title={m.d.reference} rows={[['Matériel',eq(c.db,m.d.equipmentId)],['Type',m.d.type],['Prestataire',m.d.provider],['Coût',money(m.d.cost)],['Description',m.d.description],['Diagnostic',m.d.diagnostic],['Statut',m.d.status]]}/>;if(m.t==='document')return <Document {...p} item={m.d}/>;if(m.t==='manual-document')return <ManualDocument {...p}/>;if(['supplier','site','category','user'].includes(m.t))return <GenericForm {...p} type={m.t} item={m.d}/>;if(m.t==='notifications')return <Notifications {...p}/>;if(m.t==='reset')return <Modal title="Confirmation requise" close={close}><p>Réinitialiser toutes les données locales de démonstration ? Cette action ne peut pas être annulée.</p><div className="modal-actions"><Btn onClick={close}>Annuler</Btn><Btn kind="danger" onClick={()=>{reset();c.refresh();close();c.note('Données de démonstration réinitialisées.')}}>Confirmer</Btn></div></Modal>}
+function EquipmentForm({db,user,item,commit,close}){let[f,setF]=useState(item||{reference:`GEMA-MAT-2026-${String(db.equipment.length+1).padStart(4,'0')}`,designation:'',category:'Ordinateur portable',brand:'',model:'',serial:'',inventory:'',status:'Disponible',condition:'Neuf',site:'Siège Alger',location:'Magasin central',department:'Informatique',supplier:db.suppliers[0]?.company||'',acquisitionDate:today(),warrantyEnd:'2027-12-31',price:'',notes:''});let s=(k,v)=>setF({...f,[k]:v});function submit(e){e.preventDefault();commit(()=>{let dupe=db.equipment.find(x=>(x.serial===f.serial||x.inventory===f.inventory)&&x.id!==item?.id);if(dupe)throw Error('Le numéro de série ou inventaire existe déjà.');if(item)update('equipment',item.id,{...f,price:Number(f.price)});else add('equipment',{...f,price:Number(f.price),archived:false});audit(n(user),item?'Matériel modifié':'Matériel créé','Parc matériel',f.designation)},item?'Matériel mis à jour.':'Matériel ajouté au parc.')}return <Modal title={item?'Modifier le matériel':'Ajouter un matériel'} close={close} wide><form onSubmit={submit}><div className="form-grid">{[['Référence interne','reference'],['Désignation','designation'],['Marque','brand'],['Modèle','model'],['Numéro de série','serial'],['Numéro inventaire','inventory'],['Localisation','location'],['Département','department'],['Prix acquisition (DA)','price','number'],['Date acquisition','acquisitionDate','date'],['Fin garantie','warrantyEnd','date']].map(x=><Field label={x[0]} key={x[1]}><input required={['reference','designation','serial','inventory','price'].includes(x[1])} type={x[2]||'text'} value={f[x[1]]} onChange={e=>s(x[1],e.target.value)}/></Field>)}<Field label="Catégorie"><select value={f.category} onChange={e=>s('category',e.target.value)}>{db.categories.map(x=><option key={x.id}>{x.name}</option>)}</select></Field><Field label="Statut"><select value={f.status} onChange={e=>s('status',e.target.value)}>{['Disponible','Affecté','En maintenance','Réservé','En attente de restitution','Hors service','Réformé'].map(x=><option key={x}>{x}</option>)}</select></Field><Field label="État"><select value={f.condition} onChange={e=>s('condition',e.target.value)}>{['Neuf','Très bon état','Bon état','État moyen','Endommagé'].map(x=><option key={x}>{x}</option>)}</select></Field><Field label="Site"><select value={f.site} onChange={e=>s('site',e.target.value)}>{db.sites.map(x=><option key={x.id}>{x.name}</option>)}</select></Field><Field label="Fournisseur"><select value={f.supplier} onChange={e=>s('supplier',e.target.value)}>{db.suppliers.map(x=><option key={x.id}>{x.company}</option>)}</select></Field></div><Field label="Notes"><textarea value={f.notes} onChange={e=>s('notes',e.target.value)}/></Field><div className="modal-actions"><Btn onClick={close}>Annuler</Btn><Btn kind="primary" type="submit">Enregistrer</Btn></div></form></Modal>}
+function EquipmentDetail({db,user,item,setModal,commit,close}){let a=db.assignments.filter(x=>x.equipmentId===item.id),m=db.maintenance.filter(x=>x.equipmentId===item.id);return <Modal title={item.designation} close={close} wide><div className="detail-top"><div><b className="qr">{item.reference.slice(-4)}</b><p><strong>{item.reference}</strong><br/>{item.brand} · {item.model} · {item.serial}</p></div><Badge>{item.status}</Badge></div><div className="detail-grid"><section><h3>Informations du matériel</h3><Info rows={[['Catégorie',item.category],['N° inventaire',item.inventory],['Site',item.site],['Localisation',item.location],['Fournisseur',item.supplier],['Valeur',money(item.price)],['Garantie',dateFr(item.warrantyEnd)],['État',item.condition]]}/></section><section><h3>Suivi & code QR local</h3><Info rows={[['Affectations',a.length],['Interventions',m.length],['Code QR',item.qr]]}/><div className="fake-qr">▦ ▤<br/>▧ ▦<small>{item.reference}</small></div></section></div><div className="modal-actions"><Btn onClick={()=>setModal({t:'equipment',d:item})}>Modifier</Btn>{item.status==='Disponible'&&<Btn kind="primary" onClick={()=>setModal({t:'assignment'})}>Affecter</Btn>}<Btn kind="danger" onClick={()=>commit(()=>{update('equipment',item.id,{archived:true,status:'Réformé'});audit(n(user),'Matériel archivé','Parc matériel',item.designation)},'Matériel archivé, historique conservé.')}>Archiver</Btn></div></Modal>}
+function EmployeeForm({db,user,item,commit,close}){let[f,setF]=useState(item||{matricule:`ATL-${String(db.employees.length+1).padStart(4,'0')}`,firstName:'',lastName:'',email:'',phone:'',job:'',department:'Informatique',service:'Informatique',site:'Siège Alger',wilaya:'Alger',hireDate:today(),status:'Actif',manager:''});let s=(k,v)=>setF({...f,[k]:v});function submit(e){e.preventDefault();commit(()=>{if(item)update('employees',item.id,f);else add('employees',f);audit(n(user),item?'Collaborateur modifié':'Collaborateur créé','Collaborateurs',`${f.firstName} ${f.lastName}`)},'Collaborateur enregistré.')}return <Modal title={item?'Modifier le collaborateur':'Ajouter un collaborateur'} close={close} wide><form onSubmit={submit}><div className="form-grid">{[['Matricule','matricule'],['Prénom','firstName'],['Nom','lastName'],['E-mail professionnel','email','email'],['Téléphone','phone'],['Poste','job'],['Département','department'],['Service','service'],['Wilaya','wilaya'],['Date embauche','hireDate','date'],['Responsable hiérarchique','manager']].map(x=><Field label={x[0]} key={x[1]}><input required={['matricule','firstName','lastName','email','job'].includes(x[1])} type={x[2]||'text'} value={f[x[1]]} onChange={e=>s(x[1],e.target.value)}/></Field>)}<Field label="Site"><select value={f.site} onChange={e=>s('site',e.target.value)}>{db.sites.map(x=><option key={x.id}>{x.name}</option>)}</select></Field><Field label="Statut"><select value={f.status} onChange={e=>s('status',e.target.value)}>{['Actif','En congé','En période d’essai','Sortant','Sorti','Suspendu'].map(x=><option key={x}>{x}</option>)}</select></Field></div><div className="modal-actions"><Btn onClick={close}>Annuler</Btn><Btn kind="primary" type="submit">Enregistrer</Btn></div></form></Modal>}
+function EmployeeDetail({db,user,item,setModal,commit,close}){let active=db.assignments.filter(x=>x.employeeId===item.id&&x.status==='Affectée');return <Modal title={`Profil — ${n(item)}`} close={close} wide><div className="profile"><span className="avatar big">{ini(item)}</span><p><h3>{n(item)}</h3>{item.job} · {item.department} · {item.matricule}<br/><Badge>{item.status}</Badge></p></div><div className="detail-grid"><section><h3>Informations générales</h3><Info rows={[['E-mail',item.email],['Téléphone',item.phone],['Site',item.site],['Wilaya',item.wilaya],['Embauche',dateFr(item.hireDate)],['Responsable',item.manager]]}/></section><section><h3>Matériel affecté ({active.length})</h3><div className="list">{active.map(x=><div key={x.id}><p><b>{eq(db,x.equipmentId)}</b><small>{x.reference}</small></p>{item.status==='Sortant'&&<Btn kind="primary" onClick={()=>setModal({t:'return',d:x})}>Restituer</Btn>}</div>)}</div></section></div>{item.status==='Sortant'&&<div className="departure-call"><b>Départ collaborateur</b><span>{active.length} équipement(s) restant(s)</span>{!active.length&&<Btn kind="primary" onClick={()=>commit(()=>{update('employees',item.id,{status:'Sorti',exitDate:today()});audit(n(user),'Départ clôturé','Collaborateurs',n(item))},'Départ collaborateur clôturé.')}>Clôturer la restitution</Btn>}</div>}<Panel title="Historique des affectations"><Table heads={['Référence','Matériel','Statut','Date']} rows={db.assignments.filter(x=>x.employeeId===item.id).map(x=>[x.reference,eq(db,x.equipmentId),<Badge key={x.id}>{x.status}</Badge>,dateFr(x.date)])}/></Panel><div className="modal-actions"><Btn onClick={()=>setModal({t:'employee-form',d:item})}>Modifier</Btn>{!['Sortant','Sorti'].includes(item.status)&&<Btn kind="danger" onClick={()=>commit(()=>{update('employees',item.id,{status:'Sortant'});audit(n(user),'Collaborateur sortant','Restitutions',n(item))},'Le collaborateur est désormais à restituer.')}>Marquer sortant</Btn>}</div></Modal>}function AssignmentForm({db,user,commit,close}){let available=db.equipment.filter(x=>x.status==='Disponible'),people=db.employees.filter(x=>!['Sorti','Suspendu'].includes(x.status));let[f,setF]=useState({equipmentId:available[0]?.id||'',employeeId:people[0]?.id||'',site:available[0]?.site||'',location:available[0]?.location||'',reason:'Mise à disposition professionnelle',accessories:'Chargeur, sacoche',comment:''});function submit(e){e.preventDefault();commit(()=>assignEquipment(f,n(user)),'Affectation créée et document archivé.')}return <Modal title="Nouvelle affectation" close={close}><form onSubmit={submit}>{available.length?<><Field label="Matériel disponible"><select value={f.equipmentId} onChange={e=>setF({...f,equipmentId:e.target.value})}>{available.map(x=><option value={x.id} key={x.id}>{x.designation} — {x.reference}</option>)}</select></Field><Field label="Collaborateur"><select value={f.employeeId} onChange={e=>setF({...f,employeeId:e.target.value})}>{people.map(x=><option value={x.id} key={x.id}>{n(x)} · {x.matricule}</option>)}</select></Field><Field label="Motif"><input value={f.reason} onChange={e=>setF({...f,reason:e.target.value})}/></Field><Field label="Accessoires remis"><input value={f.accessories} onChange={e=>setF({...f,accessories:e.target.value})}/></Field><Field label="Commentaire"><textarea value={f.comment} onChange={e=>setF({...f,comment:e.target.value})}/></Field><div className="modal-actions"><Btn onClick={close}>Annuler</Btn><Btn kind="primary" type="submit">Valider l’affectation</Btn></div></>:<p>Aucun matériel disponible à affecter.</p>}</form></Modal>}
+function AssignmentDetail({db,item,setModal,close}){return <Detail close={close} title={item.reference} rows={[['Matériel',eq(db,item.equipmentId)],['Collaborateur',emp(db,item.employeeId)],['Date',dateFr(item.date)],['Motif',item.reason],['Accessoires',item.accessories],['État au départ',item.conditionOut],['Responsable',item.manager],['Statut',item.status]]} action={item.status==='Affectée'&&<Btn kind="primary" onClick={()=>setModal({t:'return',d:item})}>Enregistrer une restitution</Btn>}/>}
+function ReturnForm({db,user,assignment,commit,close}){let[f,setF]=useState({assignmentId:assignment.id,condition:'Bon état',accessoriesReturned:assignment.accessories,missingAccessories:'',damage:'',comments:''});function submit(e){e.preventDefault();commit(()=>returnEquipment(f,n(user)),'Restitution validée et procès-verbal généré.')}return <Modal title="Restitution du matériel" close={close}><form onSubmit={submit}><p className="return"><b>{eq(db,assignment.equipmentId)}</b><span>{emp(db,assignment.employeeId)}</span></p><Field label="État au retour"><select value={f.condition} onChange={e=>setF({...f,condition:e.target.value})}>{['Très bon état','Bon état','État moyen','Endommagé'].map(x=><option key={x}>{x}</option>)}</select></Field><Field label="Accessoires restitués"><input value={f.accessoriesReturned} onChange={e=>setF({...f,accessoriesReturned:e.target.value})}/></Field><Field label="Accessoires manquants"><input value={f.missingAccessories} onChange={e=>setF({...f,missingAccessories:e.target.value})}/></Field><Field label="Dommages constatés"><textarea value={f.damage} onChange={e=>setF({...f,damage:e.target.value})}/></Field><div className="modal-actions"><Btn onClick={close}>Annuler</Btn><Btn kind="primary" type="submit">Valider la restitution</Btn></div></form></Modal>}
+function MaintenanceForm({db,user,commit,close}){let[f,setF]=useState({equipmentId:db.equipment[0]?.id,type:'Préventive',date:today(),provider:db.suppliers[0]?.company||'',cost:'',description:'',diagnostic:'',intervention:'',nextMaintenance:'2027-01-15',status:'Planifiée',invoice:''});function submit(e){e.preventDefault();commit(()=>{let x=add('maintenance',{...f,reference:`GEMA-MNT-${new Date().getFullYear()}-${String(db.maintenance.length+1).padStart(5,'0')}`,cost:Number(f.cost)});update('equipment',f.equipmentId,{status:f.status==='Terminée'?'Disponible':'En maintenance'});addDocument('Ordre / demande d’intervention maintenance',null,f.equipmentId,n(user),'maintenance');audit(n(user),'Maintenance enregistrée','Maintenance',eq(db,f.equipmentId))},'Intervention enregistrée.')};return <Modal title="Nouvelle intervention" close={close}><form onSubmit={submit}><Field label="Matériel"><select value={f.equipmentId} onChange={e=>setF({...f,equipmentId:e.target.value})}>{db.equipment.filter(x=>!x.archived).map(x=><option key={x.id} value={x.id}>{x.designation}</option>)}</select></Field><Field label="Type"><select value={f.type} onChange={e=>setF({...f,type:e.target.value})}>{['Préventive','Corrective','Diagnostic','Réparation'].map(x=><option key={x}>{x}</option>)}</select></Field><Field label="Prestataire"><select value={f.provider} onChange={e=>setF({...f,provider:e.target.value})}>{db.suppliers.map(x=><option key={x.id}>{x.company}</option>)}</select></Field><Field label="Coût (DA)"><input type="number" required value={f.cost} onChange={e=>setF({...f,cost:e.target.value})}/></Field><Field label="Description"><textarea value={f.description} onChange={e=>setF({...f,description:e.target.value})}/></Field><Field label="Statut"><select value={f.status} onChange={e=>setF({...f,status:e.target.value})}>{['Planifiée','En cours','Terminée','Annulée'].map(x=><option key={x}>{x}</option>)}</select></Field><div className="modal-actions"><Btn onClick={close}>Annuler</Btn><Btn kind="primary" type="submit">Enregistrer</Btn></div></form></Modal>}
+function Detail({title,rows,close,action}){return <Modal title={title} close={close}><Info rows={rows}/>{action&&<div className="modal-actions">{action}</div>}</Modal>}
+function ManualDocument({db,user,commit,close}){let[f,setF]=useState({type:'Fiche individuelle du matériel',equipmentId:db.equipment[0]?.id,employeeId:db.employees[0]?.id});return <Modal title="Générer un document administratif" close={close}><form onSubmit={e=>{e.preventDefault();commit(()=>addDocument(f.type,f.employeeId,f.equipmentId,n(user),'manuel'),'Document généré et ajouté à l’archive.')}}><Field label="Type de document"><select value={f.type} onChange={e=>setF({...f,type:e.target.value})}>{['Attestation d’affectation de matériel','Bon de remise de matériel','Procès-verbal de restitution de matériel','Fiche de restitution','Fiche d’inventaire du matériel','Fiche individuelle du matériel','Fiche de suivi du matériel','Ordre / demande d’intervention maintenance','Rapport d’intervention maintenance','Fiche de sortie de matériel','Fiche de transfert de matériel','État récapitulatif du parc matériel','Demande d’équipement'].map(x=><option key={x}>{x}</option>)}</select></Field><Field label="Collaborateur"><select value={f.employeeId} onChange={e=>setF({...f,employeeId:e.target.value})}>{db.employees.map(x=><option key={x.id} value={x.id}>{n(x)}</option>)}</select></Field><Field label="Matériel"><select value={f.equipmentId} onChange={e=>setF({...f,equipmentId:e.target.value})}>{db.equipment.map(x=><option key={x.id} value={x.id}>{x.designation}</option>)}</select></Field><div className="modal-actions"><Btn onClick={close}>Annuler</Btn><Btn kind="primary" type="submit">Générer</Btn></div></form></Modal>}
+function Document({db,item,close}){let e=db.equipment.find(x=>x.id===item.equipmentId),p=db.employees.find(x=>x.id===item.employeeId),c=db.company;return <Modal title="Aperçu du document" close={close} wide><article className="print-doc"><header><div><b>{c.legalName}</b><span>{c.address}, {c.wilaya} – Algérie</span><span>NIF : {c.nif} · RC : {c.rc} · Tél : {c.phone}</span></div><strong>GEMA</strong></header><h1>{item.type.toUpperCase()}</h1><p className="doc-ref">Réf. : {item.reference} · Date : {dateFr(item.date)}</p><section><h2>COLLABORATEUR</h2><Info rows={[['Nom et prénom',n(p)],['Matricule',p?.matricule||'—'],['Fonction',p?.job||'—'],['Département',p?.department||'—']]}/></section><section><h2>MATÉRIEL</h2><Info rows={[['Désignation',e?.designation||'—'],['Marque / modèle',`${e?.brand||'—'} ${e?.model||''}`],['N° de série',e?.serial||'—'],['N° inventaire',e?.inventory||'—'],['État',e?.condition||'—']]}/></section><section><h2>OBSERVATIONS</h2><p>Document administratif interne généré dans le démonstrateur GEMA Entreprise.</p></section><footer><span>Signature du collaborateur</span><span>Signature du responsable</span></footer></article><div className="modal-actions print-hide"><Btn onClick={close}>Fermer</Btn><Btn kind="primary" onClick={()=>print()}>Imprimer</Btn></div></Modal>}
+function GenericForm({db,user,type,item,commit,close}){let keys=type==='supplier'?[['Raison sociale','company'],['Contact','contact'],['Téléphone','phone'],['E-mail','email'],['Wilaya','wilaya'],['Spécialité','specialty']]:type==='site'?[['Nom du site','name'],['Adresse','address'],['Wilaya','wilaya'],['Responsable','manager'],['Téléphone','phone']]:type==='category'?[['Libellé','name'],['Description','description']]:[['Prénom','firstName'],['Nom','lastName'],['E-mail','email'],['Fonction','job'],['Département','department'],['Site','site']];let[f,setF]=useState(item||Object.fromEntries(keys.map(x=>[x[1],''])));let collection=type==='supplier'?'suppliers':type==='site'?'sites':type==='category'?'categories':'users';function submit(e){e.preventDefault();commit(()=>{let value=type==='user'?{...f,role:f.role||'Collaborateur',status:f.status||'Actif',password:f.password||'demo123'}:f;if(item)update(collection,item.id,value);else add(collection,value);audit(n(user),item?'Référentiel modifié':'Référentiel créé',collection,keys[0][0]+': '+f[keys[0][1]])},'Enregistrement effectué.')}return <Modal title={item?'Modifier':'Ajouter'} close={close}><form onSubmit={submit}>{keys.map(x=><Field key={x[1]} label={x[0]}><input required value={f[x[1]]||''} onChange={e=>setF({...f,[x[1]]:e.target.value})}/></Field>)}{type==='user'&&<><Field label="Rôle"><select value={f.role||'Collaborateur'} onChange={e=>setF({...f,role:e.target.value})}>{['Administrateur','Gestionnaire du parc','Responsable RH','Responsable de site','Collaborateur'].map(x=><option key={x}>{x}</option>)}</select></Field><Field label="Statut"><select value={f.status||'Actif'} onChange={e=>setF({...f,status:e.target.value})}>{['Actif','Inactif','Suspendu'].map(x=><option key={x}>{x}</option>)}</select></Field><Field label="Mot de passe démo"><input value={f.password||'demo123'} onChange={e=>setF({...f,password:e.target.value})}/></Field></>}<div className="modal-actions"><Btn onClick={close}>Annuler</Btn><Btn kind="primary" type="submit">Enregistrer</Btn></div></form></Modal>}
+function Notifications({db,close}){return <Modal title="Notifications" close={close}><div className="notifications">{db.notifications.map(x=><div key={x.id}><b>{x.type}</b><p>{x.message}</p><small>{dateFr(x.date)}</small></div>)}</div></Modal>}
 export default App
