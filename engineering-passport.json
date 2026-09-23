@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-23T11:03:41.901Z",
+  "repository": {
+    "name": "mahboubi-younes/gema-entreprise",
+    "description": ""
+  },
+  "technologies": [
+    "JavaScript"
+  ],
+  "evidence": {
+    "README": {
+      "status": "detected",
+      "detail": "README.md detected"
+    },
+    "LICENSE": {
+      "status": "detected",
+      "detail": "License file detected"
+    },
+    "SOURCE": {
+      "status": "detected",
+      "detail": "Source files detected"
+    },
+    "BUILD": {
+      "status": "detected",
+      "detail": "Build configuration detected"
+    },
+    "CI": {
+      "status": "detected",
+      "detail": "Workflow run found; latest conclusion: in_progress"
+    },
+    "TESTS": {
+      "status": "unknown",
+      "detail": "Test files and configurations not detected"
+    },
+    "DEPLOYMENT": {
+      "status": "verified",
+      "detail": "https://mahboubi-younes.github.io/gema-entreprise/"
+    },
+    "DOCUMENTATION": {
+      "status": "detected",
+      "detail": "Documentation sections or docs directory detected"
+    },
+    "ASSETS": {
+      "status": "detected",
+      "detail": "2 screenshot or asset file(s) detected"
+    },
+    "LIVE DEMO": {
+      "status": "unknown",
+      "detail": "Live demo URL not detected"
+    }
+  },
+  "github": {
+    "api": {
+      "status": "verified",
+      "detail": "Repository metadata read from GitHub API"
+    },
+    "name": "mahboubi-younes/gema-entreprise",
+    "description": "",
+    "defaultBranch": "main",
+    "pages": {
+      "status": "verified",
+      "detail": "https://mahboubi-younes.github.io/gema-entreprise/"
+    },
+    "workflows": {
+      "status": "detected",
+      "detail": "Workflow run found; latest conclusion: in_progress"
+    },
+    "latestRun": {
+      "name": "Engineering Passport",
+      "status": "in_progress",
+      "conclusion": null,
+      "updatedAt": "2026-09-23T11:03:34Z"
+    }
+  },
+  "files": {
+    "workflows": [
+      ".github/workflows/deploy-pages.yml",
+      ".github/workflows/engineering-passport.yml"
+    ],
+    "tests": [],
+    "docs": [
+      "docs/gema-dashboard.png",
+      "docs/gema-parc-materiel.png"
+    ],
+    "assets": [
+      "docs/gema-dashboard.png",
+      "docs/gema-parc-materiel.png"
+    ]
+  }
+}
