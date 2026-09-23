@@ -1,12 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-23T12:00:59.000Z",
+  "generatedAt": "2026-09-23T12:16:31.611Z",
   "repository": {
     "name": "mahboubi-younes/gema-entreprise",
     "description": ""
   },
   "technologies": [
-    "JavaScript"
+    "JavaScript",
+    "React",
+    "Vite"
   ],
   "evidence": {
     "README": {
@@ -23,15 +25,15 @@
     },
     "BUILD": {
       "status": "detected",
-      "detail": "Build configuration detected"
+      "detail": "Build script declared in frontend/package.json: vite build"
     },
     "CI": {
       "status": "detected",
-      "detail": "Workflow run found; latest conclusion: in_progress"
+      "detail": "Workflow detected; latest non-Passport run: in_progress"
     },
     "TESTS": {
       "status": "unknown",
-      "detail": "Test files and configurations not detected"
+      "detail": "No test files or test configuration detected in the repository"
     },
     "DEPLOYMENT": {
       "status": "verified",
@@ -46,8 +48,8 @@
       "detail": "2 screenshot or asset file(s) detected"
     },
     "LIVE DEMO": {
-      "status": "unknown",
-      "detail": "Live demo URL not detected"
+      "status": "verified",
+      "detail": "Live demo reachable; HTTP 200"
     }
   },
   "github": {
@@ -64,13 +66,14 @@
     },
     "workflows": {
       "status": "detected",
-      "detail": "Workflow run found; latest conclusion: in_progress"
+      "detail": "Latest non-Passport workflow: in_progress"
     },
     "latestRun": {
-      "name": "Engineering Passport",
+      "name": "Déployer GEMA sur GitHub Pages",
       "status": "in_progress",
       "conclusion": null,
-      "updatedAt": "2026-09-23T12:00:56Z"
+      "updatedAt": "2026-09-23T12:16:29Z",
+      "url": "https://github.com/mahboubi-younes/gema-entreprise/actions/runs/35859448105"
     }
   },
   "files": {

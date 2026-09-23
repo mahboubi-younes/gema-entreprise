@@ -11,21 +11,21 @@ Evidence-first report. This is not a quality score or ranking.
 - **README** | DETECTED | README.md detected
 - **LICENSE** | DETECTED | License file detected
 - **SOURCE** | DETECTED | Source files detected
-- **BUILD** | DETECTED | Build configuration detected
-- **CI** | DETECTED | Workflow run found; latest conclusion: in_progress
-- **TESTS** | UNKNOWN | Test files and configurations not detected
+- **BUILD** | DETECTED | Build script declared in frontend/package.json: vite build
+- **CI** | DETECTED | Workflow detected; latest non-Passport run: in_progress
+- **TESTS** | UNKNOWN | No test files or test configuration detected in the repository
 - **DEPLOYMENT** | VERIFIED | https://mahboubi-younes.github.io/gema-entreprise/
 - **DOCUMENTATION** | DETECTED | Documentation sections or docs directory detected
 - **ASSETS** | DETECTED | 2 screenshot or asset file(s) detected
-- **LIVE DEMO** | UNKNOWN | Live demo URL not detected
+- **LIVE DEMO** | VERIFIED | Live demo reachable; HTTP 200
 
 ## Technologies
 
-JavaScript
+JavaScript | React | Vite
 
 ## Verification context
 
-- Generated: 2026-09-23T12:00:59.000Z
+- Generated: 2026-09-23T12:16:31.611Z
 - GitHub API: Repository metadata read from GitHub API
 
 Unknown means evidence was unavailable; no claim is made.
