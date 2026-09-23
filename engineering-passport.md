@@ -1,21 +1,23 @@
 # Engineering Passport
 
+![Engineering Passport](./engineering-passport.svg)
+
 Repository: mahboubi-younes/gema-entreprise
 
 Evidence-first report. This is not a quality score or ranking.
 
 ## Evidence
 
-- **README**"��y��y� DETECTED"��y��y� README.md detected
-- **LICENSE**"��y��y� DETECTED"��y��y� License file detected
-- **SOURCE**"��y��y� DETECTED"��y��y� Source files detected
-- **BUILD**"��y��y� DETECTED"��y��y� Build configuration detected
-- **CI**"��y��y� DETECTED"��y��y� Workflow run found; latest conclusion: in_progress
-- **TESTS**"��y��y� UNKNOWN"��y��y� Test files and configurations not detected
-- **DEPLOYMENT**"��y��y� VERIFIED"��y��y� https://mahboubi-younes.github.io/gema-entreprise/
-- **DOCUMENTATION**"��y��y� DETECTED"��y��y� Documentation sections or docs directory detected
-- **ASSETS**"��y��y� DETECTED"��y��y� 2 screenshot or asset file(s) detected
-- **LIVE DEMO**"��y��y� UNKNOWN"��y��y� Live demo URL not detected
+- **README** | DETECTED | README.md detected
+- **LICENSE** | DETECTED | License file detected
+- **SOURCE** | DETECTED | Source files detected
+- **BUILD** | DETECTED | Build configuration detected
+- **CI** | DETECTED | Workflow run found; latest conclusion: in_progress
+- **TESTS** | UNKNOWN | Test files and configurations not detected
+- **DEPLOYMENT** | VERIFIED | https://mahboubi-younes.github.io/gema-entreprise/
+- **DOCUMENTATION** | DETECTED | Documentation sections or docs directory detected
+- **ASSETS** | DETECTED | 2 screenshot or asset file(s) detected
+- **LIVE DEMO** | UNKNOWN | Live demo URL not detected
 
 ## Technologies
 
